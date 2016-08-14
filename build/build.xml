@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Air Native Extension Build Scripts" default="all">
+
+    <!-- Config -->
+    <property file="build.config"/>
+
+    <!-- All -->
+    <target name="all" depends="android,swc,package" description="Full build of extension"/>
+
+    <!-- Android -->
+    <target name="android" description="Build Android Library">
+
+        <property name="android.platform.home" value="C:\development\adt-bundle-windows-x86_64-20140702\sdk\platforms\android-20"/>
+        <property name="android.build.tools.path" value="C:\development\adt-bundle-windows-x86_64-20140702\sdk\build-tools\android-4.4W"/>
+
+        <!-- make the build directory for the java code -->
+        <mkdir dir="temp/android/build/"/>
+
+        <!-- compile the billing aidl -->
+        <exec executable="${android.build.tools.path}/aidl" failonerror="true" dir="../android/">
+            <arg line="-p${android.platform.home}/framework.aidl"/>
+            <arg line="-o./gen"/>
+            <arg line="./src/com/android/vending/billing/IInAppBillingService.aidl"/>
+        </exec>
+
+        <!-- compile the java code -->
+        <javac destdir="temp/android/build/" source="1.6" target="1.6" includeantruntime="false">
+            <src path="../android/src"/>
+            <src path="../android/gen"/>
+            <classpath>
+                <pathelement location="${android.platform.home}/android.jar"/>
+                <pathelement location="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0/lib/android/FlashRuntimeExtensions.jar"/>
+                <pathelement location="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0/lib/android/lib/runtimeClasses.jar"/>
+            </classpath>
+        </javac>
+
+        <!-- make the jar -->
+        <jar basedir="temp/android/build/" destfile="temp/android/libAirInAppPurchase.jar"/>
+
+        <!-- remove the build classes -->
+        <delete dir="temp/android/build/"/>
+
+        <!-- Copy over the required libs -->
+
+        <!-- Copy over required resources -->
+
+    </target>
+
+    <!-- Actionscript -->
+    <target name="swc" description="Build SWC library">
+        <mkdir dir="temp/swc/content/"/>
+
+        <fileset dir="../actionscript/src" casesensitive="yes" id="classfiles">
+            <include name="**/*.as"/>
+        </fileset>
+
+        <pathconvert property="classlist" refid="classfiles" pathsep=" " dirsep=".">
+            <regexpmapper from=".*src.(.*)\.as" to="\1"/>
+        </pathconvert>
+
+        <exec executable="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0/bin/compc.exe" failonerror="true">
+            <env key="AIR_SDK_HOME" value="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0"/>
+            <arg line='-source-path ../actionscript/src'/>
+            <arg line='-output temp/swc/AirInAppPurchase.swc'/>
+            <arg line='-swf-version=19'/>
+            <arg line='-external-library-path+="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0/frameworks/libs/air/airglobal.swc"'/>
+            <arg line='-include-classes ${classlist}'/>
+        </exec>
+
+        <unzip src="temp/swc/AirInAppPurchase.swc" dest="temp/swc/content" overwrite="true"/>
+
+        <copy file="temp/swc/content/library.swf" todir="temp/android" overwrite="true"/>
+        <copy file="temp/swc/content/library.swf" todir="temp/default" overwrite="true"/>
+    </target>
+
+    <!-- Package -->
+    <target name="package" description="Create the extension package">
+        <exec executable="C:\Program Files (x86)\Adobe\Adobe Flash Builder 4.6\sdks\AIR 16.0/bin/adt.bat" failonerror="true" dir="temp/">
+            <arg value="-package"/>
+            <arg value="-target"/>
+            <arg value="ane"/>
+            <arg value="AirInAppPurchase.ane"/>
+            <arg value="../extension.xml"/>
+            <arg line="-swc swc/AirInAppPurchase.swc"/>
+            <arg line="-platform Android-ARM  -C android/ ."/>
+            <arg line="-platform default -C default/ ."/>
+        </exec>
+
+        <move file="temp/AirInAppPurchase.ane" todir="../bin"/>
+        <delete dir="temp"/>
+    </target>
+
+</project>
